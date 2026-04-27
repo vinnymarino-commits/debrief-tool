@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Debrief Tool</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      --bg: #ffffff; --bg2: #f6f6f4; --bg3: #efefec;
+      --t1: #1a1a1a; --t2: #6b6b6b; --t3: #9a9a9a;
+      --border: rgba(0,0,0,0.1); --border2: rgba(0,0,0,0.18);
+      --green: #1D9E75; --green-l: #E1F5EE; --green-m: #5DCAA5; --green-d: #0F6E56;
+      --r: 8px; --rl: 12px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1c1c1c; --bg2: #252525; --bg3: #2e2e2e;
+        --t1: #f0f0f0; --t2: #a0a0a0; --t3: #6a6a6a;
+        --border: rgba(255,255,255,0.1); --border2: rgba(255,255,255,0.18);
+        --green-l: #0d3326; --green-d: #5DCAA5;
+      }
+    }
+    body { font-family: var(--font); background: var(--bg3); color: var(--t1); min-height: 100vh; padding: 2rem 1rem; }
+    .wrap { max-width: 640px; margin: 0 auto; }
+    .logo { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 500; margin-bottom: 1.5rem; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+    .card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--rl); padding: 1.25rem; margin-bottom: 12px; }
+    .label { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--t3); margin-bottom: 8px; }
+    .pill { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; background: var(--bg2); color: var(--t2); border: 0.5px solid var(--border); }
+    .pill.active { background: var(--green-l); color: var(--green-d); border-color: var(--green-m); }
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--r); font-size: 13px; font-weight: 500; cursor: pointer; border: 0.5px solid var(--border2); background: var(--bg); color: var(--t1); font-family: var(--font); transition: background 0.15s, transform 0.1s; }
+    .btn:hover { background: var(--bg2); }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary { background: var(--green); color: #fff; border-color: var(--green); }
+    .btn-primary:hover { background: var(--green-d); }
+    .btn-sm { padding: 5px 12px; font-size: 12px; }
+    input, textarea { width: 100%; padding: 8px 10px; border-radius: var(--r); border: 0.5px solid var(--border2); background: var(--bg); color: var(--t1); font-size: 14px; font-family: var(--font); }
+    textarea { resize: vertical; min-height: 80px; }
+    .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .between { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+    .divider { border: none; border-top: 0.5px solid var(--border); margin: 14px 0; }
+    .hidden { display: none !important; }
+    .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--green-l); color: var(--green-d); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; flex-shrink: 0; }
+    .tag { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: var(--bg2); color: var(--t2); border: 0.5px solid var(--border); white-space: nowrap; cursor: pointer; }
+    .irow { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 0.5px solid var(--border); }
+    .vbtn { width: 44px; height: 44px; border-radius: var(--r); border: 0.5px solid var(--border2); background: var(--bg); color: var(--t1); font-size: 16px; font-weight: 500; cursor: pointer; font-family: var(--font); transition: all 0.15s; display: flex; align-items: center; justify-content: center; }
+    .vbtn:hover { background: var(--bg2); }
+    .vbtn.selected { background: var(--green); color: #fff; border-color: var(--green); }
+    .vshow { width: 44px; height: 44px; border-radius: var(--r); border: 0.5px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 500; }
+    .vshow.pending { background: var(--bg2); color: transparent; }
+    .vshow.revealed { background: var(--green-l); border-color: var(--green-m); color: var(--green-d); }
+    .countdown { width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--green); display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 500; margin: 0 auto 1rem; }
+    .progress { display: flex; gap: 4px; margin-bottom: 1.5rem; }
+    .pseg { flex: 1; height: 3px; border-radius: 2px; background: var(--border); transition: background 0.3s; }
+    .pseg.done { background: var(--green); }
+    .pseg.active { background: var(--green-m); }
+    .sh { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .snum { width: 24px; height: 24px; border-radius: 50%; background: var(--green); color: #fff; font-size: 12px; font-weight: 500; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .note-box { background: var(--bg2); border-left: 3px solid var(--green); border-radius: 0 var(--r) var(--r) 0; padding: 1rem 1.25rem; font-size: 13px; line-height: 1.8; white-space: pre-wrap; }
+    .flag-chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 12px; border: 0.5px solid #F0997B; color: #993C1D; background: #FAECE7; cursor: pointer; }
+    .avg { display: inline-flex; align-items: center; justify-content: center; padding: 6px 20px; border-radius: 20px; background: var(--green-l); color: var(--green-d); font-size: 26px; font-weight: 500; border: 0.5px solid var(--green-m); }
+    .share-box { background: var(--green-l); border: 0.5px solid var(--green-m); border-radius: var(--r); padding: 1rem; }
+    .share-url { font-size: 13px; font-weight: 500; color: var(--green-d); word-break: break-all; margin-bottom: 8px; }
+    .spinner { width: 48px; height: 48px; border-radius: 50%; border: 3px solid var(--green-m); border-top-color: var(--green); animation: spin 1s linear infinite; margin: 1rem auto; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .scale-hint { font-size: 12px; color: var(--t3); margin-bottom: 12px; }
+    .script-box { font-size: 13px; line-height: 1.8; background: var(--bg2); border-radius: var(--r); padding: 1rem; color: var(--t2); }
+    .voted-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); display:inline-block; }
+    .pending-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border2); display:inline-block; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo"><div class="dot"></div>Debrief</div>
+
+  <!-- LOADING -->
+  <div id="v-loading" class="hidden" style="text-align:center;padding:3rem 0;">
+    <div class="spinner"></div>
+    <div style="font-size:14px;color:var(--t2);">Loading session...</div>
+  </div>
+
+  <!-- ERROR -->
+  <div id="v-error" class="hidden" style="text-align:center;padding:3rem 0;">
+    <div style="font-size:15px;font-weight:500;margin-bottom:8px;">Session not found</div>
+    <div style="font-size:13px;color:var(--t2);margin-bottom:1rem;">This link may be invalid or expired.</div>
+    <button class="btn btn-primary" onclick="location.href=location.origin">Start a new debrief</button>
+  </div>
+
+  <!-- ══════════════════════════════════ -->
+  <!-- SETUP VIEW                         -->
+  <!-- ══════════════════════════════════ -->
+  <div id="v-setup" class="hidden">
+    <div class="between" style="margin-bottom:1rem;">
+      <div>
+        <div style="font-size:18px;font-weight:500;margin-bottom:4px;">New debrief session</div>
+        <div style="font-size:13px;color:var(--t2);">Set up before the panel joins</div>
+      </div>
+      <span class="pill">Setup</span>
+    </div>
+    <div class="card">
+      <div class="label">Candidate reference</div>
+      <div class="row" style="margin-bottom:12px;">
+        <div style="flex:1;min-width:90px;">
+          <div style="font-size:12px;color:var(--t2);margin-bottom:4px;">Initials only</div>
+          <input id="s-initials" placeholder="e.g. DD" maxlength="4" />
+        </div>
+        <div style="flex:1.5;min-width:130px;">
+          <div style="font-size:12px;color:var(--t2);margin-bottom:4px;">Date</div>
+          <input id="s-date" type="date" />
+        </div>
+        <div style="flex:2;min-width:150px;">
+          <div style="font-size:12px;color:var(--t2);margin-bottom:4px;">Role</div>
+          <input id="s-role" placeholder="e.g. Senior Engineer" />
+        </div>
+      </div>
+      <hr class="divider"/>
+      <div class="label">Interview panel</div>
+      <div id="setup-ilist"></div>
+      <div class="row" style="margin-top:8px;">
+        <input id="s-iname" placeholder="Interviewer name" style="flex:1;" onkeydown="if(event.key==='Enter')addSetupInterviewer()" />
+        <input id="s-ifocus" placeholder="Focus area (e.g. Technical)" style="flex:1.5;" />
+        <button class="btn" onclick="addSetupInterviewer()">+ Add</button>
+      </div>
+      <hr class="divider"/>
+      <div class="label">Evaluation factors</div>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:6px;">Remind the panel what they're assessing</div>
+      <textarea id="s-factors" placeholder="e.g. Technical depth, leadership potential, communication, culture fit..."></textarea>
+    </div>
+    <div style="text-align:right;">
+      <button class="btn btn-primary" onclick="createSession()">Create session →</button>
+    </div>
+    <div id="setup-err" style="color:#993C1D;font-size:13px;margin-top:8px;text-align:right;"></div>
+  </div>
+
+  <!-- ══════════════════════════════════ -->
+  <!-- RECRUITER VIEW                     -->
+  <!-- ══════════════════════════════════ -->
+  <div id="v-recruiter" class="hidden">
+    <div class="between" style="margin-bottom:8px;">
+      <div>
+        <div style="font-size:18px;font-weight:500;" id="r-title">Debrief</div>
+        <div style="font-size:13px;color:var(--t2);" id="r-role"></div>
+      </div>
+      <span class="pill active" id="r-stage-pill">Stage 1 of 4</span>
+    </div>
+    <div class="progress">
+      <div class="pseg active" id="ps0"></div>
+      <div class="pseg" id="ps1"></div>
+      <div class="pseg" id="ps2"></div>
+      <div class="pseg" id="ps3"></div>
+    </div>
+
+    <!-- Share card -->
+    <div class="card">
+      <div class="label">Interviewer link — share before the session</div>
+      <div class="share-box">
+        <div class="share-url" id="r-share-url"></div>
+        <button class="btn btn-sm" onclick="copyShareLink()">Copy link</button>
+      </div>
+      <div style="font-size:12px;color:var(--t2);margin-top:8px;">Each interviewer opens this on their own device and votes privately.</div>
+    </div>
+
+    <!-- Stage 1 -->
+    <div class="card" id="rs1">
+      <div class="sh"><div class="snum">1</div>
+        <div><div style="font-size:15px;font-weight:500;">Set the stage</div>
+        <div style="font-size:12px;color:var(--t2);">~2 min — frame the session</div></div>
+      </div>
+      <div class="script-box">"We're here to align on whether to proceed to an offer. Everyone has the link open on their own device — when we get to the vote, select your score privately. We'll reveal all votes simultaneously.<br><br>Goal: out in 15–20 minutes."</div>
+      <div id="r-factors" style="margin-top:12px;"></div>
+      <div style="margin-top:1rem;text-align:right;">
+        <button class="btn btn-primary" onclick="recruiterGoStage('round')">Begin round →</button>
+      </div>
+    </div>
+
+    <!-- Stage 2 -->
+    <div class="card hidden" id="rs2">
+      <div class="sh"><div class="snum">2</div>
+        <div><div style="font-size:15px;font-weight:500;">Quick round</div>
+        <div style="font-size:12px;color:var(--t2);">20–40 sec per person</div></div>
+      </div>
+      <div id="r-round-list"></div>
+      <hr class="divider"/>
+      <div style="font-size:13px;color:var(--t2);margin-bottom:8px;">Flags raised</div>
+      <div id="r-flags" class="row" style="flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>
+      <div class="row">
+        <input id="r-new-flag" placeholder="Add a flag..." style="flex:1;" onkeydown="if(event.key==='Enter')addFlag()" />
+        <button class="btn" onclick="addFlag()">Add</button>
+      </div>
+      <div id="r-flag-note" class="hidden" style="margin-top:10px;font-size:13px;color:var(--t2);background:var(--bg2);border-radius:var(--r);padding:1rem;line-height:1.7;">Flags noted — take 3–5 min for open discussion before voting.</div>
+      <div style="margin-top:1rem;text-align:right;">
+        <button class="btn btn-primary" onclick="recruiterGoStage('vote')">Open voting →</button>
+      </div>
+    </div>
+
+    <!-- Stage 3 -->
+    <div class="card hidden" id="rs3">
+      <div class="sh"><div class="snum">3</div>
+        <div><div style="font-size:15px;font-weight:500;">Simultaneous vote</div>
+        <div style="font-size:12px;color:var(--t2);">Panel votes privately — you control the reveal</div></div>
+      </div>
+      <div class="scale-hint">1 = strong no &nbsp;·&nbsp; 2 = lean no &nbsp;·&nbsp; 3 = lean yes &nbsp;·&nbsp; 4 = strong yes</div>
+      <div id="r-vote-list"></div>
+      <div id="r-vote-progress" style="font-size:13px;color:var(--t2);margin:12px 0;"></div>
+      <hr class="divider"/>
+      <div style="text-align:center;">
+        <div id="r-countdown" class="hidden">
+          <div class="countdown" id="r-cnum">3</div>
+          <div style="font-size:13px;color:var(--t2);">Counting down...</div>
+        </div>
+        <div id="r-reveal-btn">
+          <button class="btn btn-primary" onclick="startReveal()">Reveal all votes →</button>
+          <div style="font-size:12px;color:var(--t3);margin-top:6px;">All votes hidden until you reveal</div>
+        </div>
+      </div>
+      <div id="r-result" class="hidden" style="text-align:center;margin:1rem 0;">
+        <div style="font-size:12px;color:var(--t2);margin-bottom:6px;">Average score</div>
+        <div class="avg" id="r-avg">—</div>
+        <div style="font-size:12px;color:var(--t3);margin-top:6px;" id="r-spread"></div>
+      </div>
+      <div id="r-discuss" class="hidden" style="background:var(--bg2);border-radius:var(--r);padding:1rem;font-size:13px;color:var(--t2);line-height:1.7;margin-top:1rem;">
+        Discuss the range: why did scores differ? What concerns or strengths drove them?
+      </div>
+      <div id="r-to-decision" class="hidden" style="text-align:right;margin-top:1rem;">
+        <button class="btn btn-primary" onclick="recruiterGoStage('decision')">Record decision →</button>
+      </div>
+    </div>
+
+    <!-- Stage 4 -->
+    <div class="card hidden" id="rs4">
+      <div class="sh"><div class="snum">4</div>
+        <div><div style="font-size:15px;font-weight:500;">Decision & offer note</div>
+        <div style="font-size:12px;color:var(--t2);">Record the outcome and generate a Greenhouse note</div></div>
+      </div>
+      <div class="label">Decision</div>
+      <div class="row" style="margin-bottom:1rem;flex-wrap:wrap;">
+        <button class="btn" id="d-proceed" onclick="setDecision('proceed')">Proceed to offer</button>
+        <button class="btn" id="d-no" onclick="setDecision('no')">Do not proceed</button>
+        <button class="btn" id="d-hold" onclick="setDecision('hold')">Hold — more info needed</button>
+      </div>
+      <div class="label">Key themes from discussion</div>
+      <textarea id="r-themes" placeholder="Summarise strengths, risks, and flags from the debrief..." style="margin-bottom:1rem;"></textarea>
+      <div class="between" style="margin-bottom:8px;">
+        <div class="label" style="margin:0;">Greenhouse offer approval note</div>
+        <button class="btn btn-sm hidden" id="copy-note-btn" onclick="copyNote()">Copy note</button>
+      </div>
+      <div id="r-note" class="note-box" style="color:var(--t3);font-style:italic;font-size:13px;">Fill in the decision and key themes, then generate your note.</div>
+      <div style="margin-top:1rem;display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="generateNote()">Generate AI note →</button>
+        <button class="btn" onclick="location.href=location.origin">New debrief</button>
+      </div>
+      <div id="r-note-loading" class="hidden" style="margin-top:8px;font-size:12px;color:var(--t3);">Drafting note...</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════ -->
+  <!-- INTERVIEWER VIEW                   -->
+  <!-- ══════════════════════════════════ -->
+  <div id="v-interviewer" class="hidden">
+    <div class="between" style="margin-bottom:1rem;">
+      <div style="font-size:18px;font-weight:500;" id="i-title">Debrief</div>
+      <span class="pill active" id="i-pill">Joining</span>
+    </div>
+
+    <!-- Name entry -->
+    <div class="card" id="i-name-card">
+      <div style="font-size:15px;font-weight:500;margin-bottom:4px;">Welcome to the debrief</div>
+      <div style="font-size:13px;color:var(--t2);margin-bottom:1rem;">Enter your name so the recruiter can track your vote.</div>
+      <div class="row">
+        <input id="i-name-input" placeholder="Your name" style="flex:1;" onkeydown="if(event.key==='Enter')joinSession()" />
+        <button class="btn btn-primary" onclick="joinSession()">Join →</button>
+      </div>
+      <div id="i-name-err" style="color:#993C1D;font-size:12px;margin-top:6px;"></div>
+    </div>
+
+    <!-- Waiting -->
+    <div class="card hidden" id="i-waiting-card">
+      <div style="text-align:center;padding:1.5rem 0;">
+        <div class="spinner"></div>
+        <div style="font-size:14px;font-weight:500;" id="i-waiting-msg">Waiting for the recruiter to begin...</div>
+        <div style="font-size:12px;color:var(--t2);margin-top:6px;">You'll be notified when the session moves forward.</div>
+      </div>
+    </div>
+
+    <!-- Round -->
+    <div class="card hidden" id="i-round-card">
+      <div style="font-size:15px;font-weight:500;margin-bottom:8px;">Quick round in progress</div>
+      <div style="font-size:13px;color:var(--t2);margin-bottom:1rem;line-height:1.7;">Share your perspective in 20–40 seconds when it's your turn. The recruiter will open voting when everyone has spoken.</div>
+      <div id="i-factors-display" style="font-size:13px;color:var(--t2);line-height:1.7;background:var(--bg2);border-radius:var(--r);padding:1rem;"></div>
+    </div>
+
+    <!-- Vote -->
+    <div class="card hidden" id="i-vote-card">
+      <div style="font-size:15px;font-weight:500;margin-bottom:4px;">Cast your vote</div>
+      <div class="scale-hint" style="margin:8px 0 1rem;">1 = strong no &nbsp;·&nbsp; 2 = lean no &nbsp;·&nbsp; 3 = lean yes &nbsp;·&nbsp; 4 = strong yes</div>
+      <div style="font-size:13px;color:var(--t2);margin-bottom:1rem;">Your vote is private until the recruiter reveals all votes simultaneously.</div>
+      <div class="row" style="gap:12px;justify-content:center;margin-bottom:1rem;">
+        <button class="vbtn" id="iv1" onclick="castInterviewerVote(1)">1</button>
+        <button class="vbtn" id="iv2" onclick="castInterviewerVote(2)">2</button>
+        <button class="vbtn" id="iv3" onclick="castInterviewerVote(3)">3</button>
+        <button class="vbtn" id="iv4" onclick="castInterviewerVote(4)">4</button>
+      </div>
+      <div id="i-voted-msg" class="hidden" style="text-align:center;font-size:13px;color:var(--green);font-weight:500;padding:8px;">✓ Vote submitted — waiting for the recruiter to reveal</div>
+    </div>
+
+    <!-- Reveal -->
+    <div class="card hidden" id="i-reveal-card">
+      <div style="font-size:15px;font-weight:500;margin-bottom:1rem;text-align:center;">Votes revealed</div>
+      <div id="i-reveal-list"></div>
+      <div style="text-align:center;margin-top:1rem;">
+        <div style="font-size:12px;color:var(--t2);margin-bottom:6px;">Average score</div>
+        <div class="avg" id="i-avg">—</div>
+      </div>
+      <div style="margin-top:1rem;background:var(--bg2);border-radius:var(--r);padding:1rem;font-size:13px;color:var(--t2);line-height:1.7;">
+        The recruiter will now facilitate a discussion before recording the final decision.
+      </div>
+    </div>
+
+    <!-- Decision / complete -->
+    <div class="card hidden" id="i-decision-card">
+      <div style="text-align:center;padding:2rem 0;">
+        <div style="font-size:36px;margin-bottom:12px;">✓</div>
+        <div style="font-size:15px;font-weight:500;margin-bottom:6px;">Debrief complete</div>
+        <div style="font-size:13px;color:var(--t2);">The recruiter is recording the final decision. Thanks for your input.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script>
+let sessionId = null;
+let sessionData = null;
+let myName = null;
+let myRole = null;
+let decision = null;
+let rFlags = [];
+let lastStage = null;
+let lastRevealed = false;
+let pollInterval = null;
+let setupInterviewers = [];
+
+// ─── INIT ───────────────────────────────────
+async function init() {
+  const params = new URLSearchParams(location.search);
+  sessionId = params.get('session');
+  const isRecruiter = params.get('recruiter') === '1';
+
+  if (!sessionId) {
+    show('v-setup');
+    document.getElementById('s-date').valueAsDate = new Date();
+    return;
+  }
+
+  show('v-loading');
+  const session = await fetchSession(sessionId);
+  if (!session) { show('v-error'); return; }
+  sessionData = session;
+
+  if (isRecruiter) {
+    myRole = 'recruiter';
+    show('v-recruiter');
+    renderRecruiterFromSession(session);
+    startPolling();
+  } else {
+    myRole = 'interviewer';
+    show('v-interviewer');
+    document.getElementById('i-title').textContent = session.candidate_ref + (session.role ? ' · ' + session.role : '');
+    if (session.factors) {
+      document.getElementById('i-factors-display').textContent = session.factors;
+    }
+    startPolling();
+  }
+}
+
+function show(id) {
+  ['v-setup','v-recruiter','v-interviewer','v-loading','v-error'].forEach(v =>
+    document.getElementById(v).classList.toggle('hidden', v !== id));
+}
+
+// ─── API ─────────────────────────────────────
+async function fetchSession(id) {
+  try {
+    const res = await fetch('/api/session?sessionId=' + id);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch { return null; }
+}
+
+async function fetchVotes(id) {
+  try {
+    const res = await fetch('/api/votes?sessionId=' + id);
+    if (!res.ok) return [];
+    return await res.json();
+  } catch { return []; }
+}
+
+async function patchSession(updates) {
+  await fetch('/api/session', {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId, ...updates })
+  });
+}
+
+async function postVote(name, vote) {
+  await fetch('/api/votes', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId, interviewerName: name, vote })
+  });
+}
+
+// ─── SETUP ───────────────────────────────────
+function addSetupInterviewer() {
+  const name = document.getElementById('s-iname').value.trim();
+  const focus = document.getElementById('s-ifocus').value.trim();
+  if (!name) return;
+  setupInterviewers.push({ name, focus });
+  document.getElementById('s-iname').value = '';
+  document.getElementById('s-ifocus').value = '';
+  renderSetupList();
+}
+
+function removeSetupInterviewer(i) {
+  setupInterviewers.splice(i,1); renderSetupList();
+}
+
+function renderSetupList() {
+  document.getElementById('setup-ilist').innerHTML = setupInterviewers.map((p,i) => `
+    <div class="irow">
+      <div class="avatar">${ini(p.name)}</div>
+      <div style="flex:1;font-size:14px;">${p.name}</div>
+      <span class="tag">${p.focus||'General'}</span>
+      <button class="btn btn-sm" onclick="removeSetupInterviewer(${i})">Remove</button>
+    </div>`).join('');
+}
+
+async function createSession() {
+  const errEl = document.getElementById('setup-err');
+  if (!setupInterviewers.length) { errEl.textContent = 'Add at least one interviewer.'; return; }
+  errEl.textContent = 'Creating session...';
+
+  const body = {
+    action: 'create',
+    candidateRef: document.getElementById('s-initials').value.trim() || '??',
+    role: document.getElementById('s-role').value.trim(),
+    factors: document.getElementById('s-factors').value.trim(),
+    interviewers: setupInterviewers,
+  };
+
+  try {
+    const res = await fetch('/api/session', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!data.sessionId) throw new Error();
+    sessionId = data.sessionId;
+    sessionData = { candidate_ref: body.candidateRef, role: body.role, factors: body.factors, interviewers: JSON.stringify(setupInterviewers), stage: 'set-stage', revealed: false, flags: '[]' };
+    myRole = 'recruiter';
+    history.replaceState({}, '', '?session=' + sessionId + '&recruiter=1');
+    show('v-recruiter');
+    renderRecruiterFromSession(sessionData);
+    startPolling();
+  } catch {
+    errEl.textContent = 'Error creating session. Check your setup and try again.';
+  }
+}
+
+// ─── RECRUITER ───────────────────────────────
+function renderRecruiterFromSession(session) {
+  const date = document.getElementById('s-date') ? document.getElementById('s-date').value : '';
+  const dateStr = date ? new Date(date + 'T00:00:00').toLocaleDateString('en-GB', { day:'numeric', month:'long' }) : '';
+  document.getElementById('r-title').textContent = session.candidate_ref + (dateStr ? ' · ' + dateStr : '');
+  document.getElementById('r-role').textContent = session.role || '';
+  document.getElementById('r-share-url').textContent = location.origin + '?session=' + sessionId;
+  if (session.factors) {
+    document.getElementById('r-factors').innerHTML = `<div style="font-size:12px;color:var(--t3);margin-bottom:4px;">Evaluation factors</div><div style="font-size:13px;color:var(--t2);line-height:1.7;">${session.factors}</div>`;
+  }
+  const interviewers = JSON.parse(session.interviewers || '[]');
+  document.getElementById('r-round-list').innerHTML = interviewers.map(p => `
+    <div class="irow">
+      <div class="avatar">${ini(p.name)}</div>
+      <div style="flex:1;"><div style="font-size:13px;font-weight:500;">${p.name}</div><div style="font-size:12px;color:var(--t3);">${p.focus||'General'}</div></div>
+      <span id="spoke-${safeId(p.name)}" class="tag" onclick="toggleSpoke('${safeId(p.name)}')">Pending</span>
+    </div>`).join('');
+  rFlags = JSON.parse(session.flags || '[]');
+  renderFlags();
+  recruiterSetStageUI(session.stage, session.revealed);
+}
+
+function toggleSpoke(id) {
+  const el = document.getElementById('spoke-'+id);
+  const done = el.textContent === 'Done';
+  el.textContent = done ? 'Pending' : 'Done';
+  el.style.background = done ? '' : 'var(--green-l)';
+  el.style.color = done ? '' : 'var(--green-d)';
+  el.style.borderColor = done ? '' : 'var(--green-m)';
+}
+
+function addFlag() {
+  const val = document.getElementById('r-new-flag').value.trim();
+  if (!val) return;
+  rFlags.push(val);
+  document.getElementById('r-new-flag').value = '';
+  renderFlags();
+  patchSession({ flags: rFlags });
+  document.getElementById('r-flag-note').classList.remove('hidden');
+}
+
+function removeFlag(i) {
+  rFlags.splice(i,1); renderFlags();
+  patchSession({ flags: rFlags });
+  if (!rFlags.length) document.getElementById('r-flag-note').classList.add('hidden');
+}
+
+function renderFlags() {
+  document.getElementById('r-flags').innerHTML = rFlags.map((f,i) => `
+    <span class="flag-chip" onclick="removeFlag(${i})">⚑ ${f} ×</span>`).join('');
+}
+
+async function recruiterGoStage(stage) {
+  await patchSession({ stage });
+  sessionData.stage = stage;
+  recruiterSetStageUI(stage, sessionData.revealed);
+}
+
+function recruiterSetStageUI(stage, revealed) {
+  document.getElementById('rs1').classList.toggle('hidden', stage !== 'set-stage');
+  document.getElementById('rs2').classList.toggle('hidden', stage !== 'round');
+  document.getElementById('rs3').classList.toggle('hidden', stage !== 'vote');
+  document.getElementById('rs4').classList.toggle('hidden', stage !== 'decision');
+  const n = { 'set-stage':0, 'round':1, 'vote':2, 'decision':3 }[stage] ?? 0;
+  for (let i=0;i<4;i++) {
+    const el = document.getElementById('ps'+i);
+    el.classList.remove('done','active');
+    if (i<n) el.classList.add('done');
+    else if (i===n) el.classList.add('active');
+  }
+  document.getElementById('r-stage-pill').textContent = `Stage ${n+1} of 4`;
+  if (stage === 'vote' && revealed) {
+    document.getElementById('r-reveal-btn').classList.add('hidden');
+    document.getElementById('r-result').classList.remove('hidden');
+    document.getElementById('r-discuss').classList.remove('hidden');
+    document.getElementById('r-to-decision').classList.remove('hidden');
+  }
+}
+
+function renderRecruiterVoteList(votes, revealed) {
+  const interviewers = JSON.parse(sessionData.interviewers || '[]');
+  const voteMap = {};
+  votes.forEach(v => voteMap[v.interviewer_name] = v.vote);
+  document.getElementById('r-vote-list').innerHTML = interviewers.map(p => {
+    const hasVoted = voteMap[p.name] !== undefined;
+    return `<div class="irow">
+      <div class="avatar">${ini(p.name)}</div>
+      <div style="flex:1;font-size:13px;">${p.name}</div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t2);">
+        <div class="${hasVoted?'voted-dot':'pending-dot'}"></div>
+        <span>${revealed && hasVoted ? voteMap[p.name]+'/4' : hasVoted ? 'Voted' : 'Pending'}</span>
+      </div>
+    </div>`;
+  }).join('');
+  const total = interviewers.length, voted = votes.length;
+  document.getElementById('r-vote-progress').textContent = `${voted} of ${total} votes submitted`;
+}
+
+function showRecruiterRevealResult(votes) {
+  const interviewers = JSON.parse(sessionData.interviewers || '[]');
+  const voteMap = {};
+  votes.forEach(v => voteMap[v.interviewer_name] = v.vote);
+  renderRecruiterVoteList(votes, true);
+  const vals = interviewers.map(p => voteMap[p.name]).filter(v => v !== undefined);
+  if (vals.length) {
+    document.getElementById('r-avg').textContent = (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1);
+    const spread = vals.length > 1 ? ` (range: ${Math.min(...vals)}–${Math.max(...vals)})` : '';
+    document.getElementById('r-spread').textContent = `${vals.length} voter${vals.length>1?'s':''} ${spread}`;
+  }
+  document.getElementById('r-reveal-btn').classList.add('hidden');
+  document.getElementById('r-result').classList.remove('hidden');
+  document.getElementById('r-discuss').classList.remove('hidden');
+  document.getElementById('r-to-decision').classList.remove('hidden');
+}
+
+async function startReveal() {
+  document.getElementById('r-reveal-btn').classList.add('hidden');
+  document.getElementById('r-countdown').classList.remove('hidden');
+  let n = 3;
+  const el = document.getElementById('r-cnum');
+  const tick = setInterval(async () => {
+    n--;
+    if (n <= 0) {
+      clearInterval(tick);
+      document.getElementById('r-countdown').classList.add('hidden');
+      await patchSession({ revealed: true });
+      sessionData.revealed = true;
+      const votes = await fetchVotes(sessionId);
+      showRecruiterRevealResult(votes);
+    } else el.textContent = n;
+  }, 800);
+}
+
+function setDecision(d) {
+  decision = d;
+  ['proceed','no','hold'].forEach(o => document.getElementById('d-'+o).classList.remove('btn-primary'));
+  document.getElementById('d-'+d).classList.add('btn-primary');
+}
+
+async function generateNote() {
+  if (!decision) { alert('Please record a decision first.'); return; }
+  const themes = document.getElementById('r-themes').value.trim();
+  const votes = await fetchVotes(sessionId);
+  const interviewers = JSON.parse(sessionData.interviewers || '[]');
+  const voteMap = {};
+  votes.forEach(v => voteMap[v.interviewer_name] = v.vote);
+  const vals = interviewers.map(p => voteMap[p.name]).filter(v => v !== undefined);
+  const avg = vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1) : 'N/A';
+  const decLabel = { proceed:'Proceed to offer', no:'Do not proceed', hold:'Hold — more information needed' }[decision];
+  const panel = interviewers.map(p => `${p.name} (${p.focus||'General'}): ${voteMap[p.name]!==undefined ? voteMap[p.name]+'/4' : 'no vote'}`).join(', ');
+  const flagStr = rFlags.length ? rFlags.join(', ') : 'None raised';
+
+  const noteEl = document.getElementById('r-note');
+  noteEl.style.fontStyle = 'normal'; noteEl.style.color = 'var(--t3)';
+  noteEl.textContent = 'Generating...';
+  document.getElementById('r-note-loading').classList.remove('hidden');
+
+  const prompt = `You are helping a recruiter write a short offer approval note to paste into Greenhouse after an interview debrief. Write a single short narrative paragraph (4–6 sentences) in a professional but human tone. No bullet points or headers.
+
+- Candidate: ${sessionData.candidate_ref}, Role: ${sessionData.role||'not specified'}
+- Decision: ${decLabel}
+- Average score: ${avg}/4 (1=strong no, 4=strong yes)
+- Panel: ${panel}
+- Flags: ${flagStr}
+- Themes: ${themes||'not provided'}
+
+Write the note now, starting directly with the content.`;
+
+  try {
+    const res = await fetch('/api/claude', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role:'user', content: prompt }] })
+    });
+    const data = await res.json();
+    const text = data.content?.find(b => b.type==='text')?.text || 'Could not generate note.';
+    noteEl.textContent = text; noteEl.style.color = 'var(--t1)';
+    document.getElementById('copy-note-btn').classList.remove('hidden');
+  } catch { noteEl.textContent = 'Error. Please try again.'; }
+  document.getElementById('r-note-loading').classList.add('hidden');
+}
+
+function copyNote() {
+  navigator.clipboard.writeText(document.getElementById('r-note').textContent).then(() => {
+    const btn = document.getElementById('copy-note-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy note', 2000);
+  });
+}
+
+function copyShareLink() {
+  navigator.clipboard.writeText(location.origin + '?session=' + sessionId).then(() => {
+    event.target.textContent = 'Copied!';
+    setTimeout(() => event.target.textContent = 'Copy link', 2000);
+  });
+}
+
+// ─── INTERVIEWER ─────────────────────────────
+async function joinSession() {
+  const name = document.getElementById('i-name-input').value.trim();
+  if (!name) { document.getElementById('i-name-err').textContent = 'Please enter your name.'; return; }
+  myName = name;
+  document.getElementById('i-name-card').classList.add('hidden');
+  updateInterviewerUI(sessionData);
+}
+
+async function castInterviewerVote(v) {
+  [1,2,3,4].forEach(n => document.getElementById('iv'+n).classList.toggle('selected', n===v));
+  await postVote(myName, v);
+  document.getElementById('i-voted-msg').classList.remove('hidden');
+}
+
+function updateInterviewerUI(session) {
+  if (!myName) return;
+  const stage = session.stage;
+  const revealed = session.revealed;
+  ['i-waiting-card','i-round-card','i-vote-card','i-reveal-card','i-decision-card'].forEach(id =>
+    document.getElementById(id).classList.add('hidden'));
+
+  const pillMap = { 'set-stage':'Waiting', 'round':'Round', 'vote':'Vote', 'decision':'Complete' };
+  document.getElementById('i-pill').textContent = pillMap[stage] || 'Waiting';
+
+  if (stage === 'set-stage') {
+    document.getElementById('i-waiting-card').classList.remove('hidden');
+  } else if (stage === 'round') {
+    document.getElementById('i-round-card').classList.remove('hidden');
+  } else if (stage === 'vote' && !revealed) {
+    document.getElementById('i-vote-card').classList.remove('hidden');
+  } else if (stage === 'vote' && revealed) {
+    document.getElementById('i-reveal-card').classList.remove('hidden');
+    showInterviewerReveal(session);
+  } else if (stage === 'decision') {
+    document.getElementById('i-decision-card').classList.remove('hidden');
+  }
+}
+
+async function showInterviewerReveal(session) {
+  const votes = await fetchVotes(sessionId);
+  const interviewers = JSON.parse(session.interviewers || '[]');
+  const voteMap = {};
+  votes.forEach(v => voteMap[v.interviewer_name] = v.vote);
+  document.getElementById('i-reveal-list').innerHTML = interviewers.map(p => `
+    <div class="irow">
+      <div class="avatar">${ini(p.name)}</div>
+      <div style="flex:1;font-size:13px;">${p.name}</div>
+      <div class="vshow ${voteMap[p.name]!==undefined?'revealed':'pending'}">${voteMap[p.name]!==undefined?voteMap[p.name]:'—'}</div>
+    </div>`).join('');
+  const vals = interviewers.map(p => voteMap[p.name]).filter(v=>v!==undefined);
+  if (vals.length) document.getElementById('i-avg').textContent = (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1);
+}
+
+// ─── POLLING ─────────────────────────────────
+function startPolling() {
+  pollInterval = setInterval(async () => {
+    const session = await fetchSession(sessionId);
+    if (!session) return;
+    const stageChanged = session.stage !== lastStage;
+    const revealChanged = session.revealed !== lastRevealed;
+    lastStage = session.stage;
+    lastRevealed = session.revealed;
+    sessionData = session;
+
+    if (myRole === 'recruiter') {
+      if (stageChanged) recruiterSetStageUI(session.stage, session.revealed);
+      if (session.stage === 'vote') {
+        const votes = await fetchVotes(sessionId);
+        renderRecruiterVoteList(votes, session.revealed);
+        if (session.revealed && revealChanged) showRecruiterRevealResult(votes);
+      }
+    } else if (myRole === 'interviewer' && myName) {
+      if (stageChanged || revealChanged) updateInterviewerUI(session);
+    }
+  }, 2500);
+}
+
+// ─── UTILS ───────────────────────────────────
+function ini(name) { return name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
+function safeId(name) { return name.replace(/[^a-zA-Z0-9]/g,'_'); }
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "name": "debrief-tool",
+  "version": "1.0.0",
+  "description": "Interview debrief facilitation tool",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  }
+}
