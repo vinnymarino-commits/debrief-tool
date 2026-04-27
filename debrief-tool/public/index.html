@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Debrief Tool</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      --color-bg: #ffffff;
+      --color-bg-secondary: #f6f6f4;
+      --color-bg-tertiary: #efefec;
+      --color-text-primary: #1a1a1a;
+      --color-text-secondary: #6b6b6b;
+      --color-text-tertiary: #9a9a9a;
+      --color-border: rgba(0,0,0,0.1);
+      --color-border-mid: rgba(0,0,0,0.18);
+      --color-green: #1D9E75;
+      --color-green-light: #E1F5EE;
+      --color-green-mid: #5DCAA5;
+      --color-green-dark: #0F6E56;
+      --color-green-text: #0F6E56;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --color-bg: #1c1c1c;
+        --color-bg-secondary: #252525;
+        --color-bg-tertiary: #2e2e2e;
+        --color-text-primary: #f0f0f0;
+        --color-text-secondary: #a0a0a0;
+        --color-text-tertiary: #6a6a6a;
+        --color-border: rgba(255,255,255,0.1);
+        --color-border-mid: rgba(255,255,255,0.18);
+        --color-green-light: #0d3326;
+        --color-green-text: #5DCAA5;
+      }
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-bg-tertiary);
+      color: var(--color-text-primary);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    .container {
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    .app-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+
+    .app-logo {
+      font-size: 15px; font-weight: 500; color: var(--color-text-primary);
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    .logo-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--color-green);
+    }
+
+    .stage-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase;
+      padding: 3px 10px; border-radius: 20px;
+      background: var(--color-bg-secondary);
+      color: var(--color-text-secondary);
+      border: 0.5px solid var(--color-border);
+    }
+    .stage-pill.active {
+      background: var(--color-green-light);
+      color: var(--color-green-text);
+      border-color: var(--color-green-mid);
+    }
+
+    .card {
+      background: var(--color-bg);
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      margin-bottom: 12px;
+    }
+
+    .section-label {
+      font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--color-text-tertiary); margin-bottom: 10px;
+    }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: var(--radius-md);
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      border: 0.5px solid var(--color-border-mid);
+      background: var(--color-bg);
+      color: var(--color-text-primary);
+      transition: background 0.15s, transform 0.1s;
+      font-family: var(--font-sans);
+    }
+    .btn:hover { background: var(--color-bg-secondary); }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary { background: var(--color-green); color: #fff; border-color: var(--color-green); }
+    .btn-primary:hover { background: var(--color-green-dark); }
+
+    input[type="text"], input[type="date"], textarea, select {
+      width: 100%; padding: 8px 10px; border-radius: var(--radius-md);
+      border: 0.5px solid var(--color-border-mid);
+      background: var(--color-bg);
+      color: var(--color-text-primary);
+      font-size: 14px; font-family: var(--font-sans);
+    }
+    textarea { resize: vertical; min-height: 80px; }
+
+    .interviewer-row {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+    }
+
+    .avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--color-green-light); color: var(--color-green-text);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 500; flex-shrink: 0;
+    }
+
+    .vote-btn {
+      width: 38px; height: 38px; border-radius: var(--radius-md);
+      border: 0.5px solid var(--color-border-mid);
+      background: var(--color-bg);
+      color: var(--color-text-primary);
+      font-size: 15px; font-weight: 500;
+      cursor: pointer; transition: all 0.15s;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-sans);
+    }
+    .vote-btn:hover { background: var(--color-bg-secondary); }
+    .vote-btn.selected { background: var(--color-green); color: #fff; border-color: var(--color-green); }
+
+    .vote-display {
+      min-width: 38px; height: 38px; border-radius: var(--radius-md);
+      border: 0.5px solid var(--color-border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 500;
+    }
+    .vote-display.revealed { background: var(--color-green-light); border-color: var(--color-green-mid); color: var(--color-green-text); }
+    .vote-display.pending { background: var(--color-bg-secondary); color: transparent; }
+
+    .countdown-ring {
+      width: 80px; height: 80px; border-radius: 50%;
+      border: 3px solid var(--color-green);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px; font-weight: 500;
+      margin: 0 auto 1rem;
+    }
+
+    .avg-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 4px 18px; border-radius: 20px;
+      background: var(--color-green-light); color: var(--color-green-text);
+      font-size: 24px; font-weight: 500;
+      border: 0.5px solid var(--color-green-mid);
+    }
+
+    .flag-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 4px 10px; border-radius: 20px; font-size: 12px;
+      border: 0.5px solid #F0997B;
+      color: #993C1D; background: #FAECE7;
+      cursor: pointer;
+    }
+
+    .step-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+    .step-num {
+      width: 24px; height: 24px; border-radius: 50%;
+      background: var(--color-green); color: #fff;
+      font-size: 12px; font-weight: 500;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+
+    .progress-bar { display: flex; gap: 4px; margin-bottom: 1.5rem; }
+    .progress-seg { flex: 1; height: 3px; border-radius: 2px; background: var(--color-border); transition: background 0.3s; }
+    .progress-seg.done { background: var(--color-green); }
+    .progress-seg.active { background: var(--color-green-mid); }
+
+    .note-box {
+      background: var(--color-bg-secondary);
+      border-left: 3px solid var(--color-green);
+      border-radius: 0 var(--radius-md) var(--radius-md) 0;
+      padding: 1rem 1.25rem; font-size: 13px; line-height: 1.8;
+      color: var(--color-text-primary);
+      white-space: pre-wrap;
+    }
+
+    .copy-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 12px; border-radius: var(--radius-md);
+      font-size: 12px; font-weight: 500;
+      border: 0.5px solid var(--color-border-mid);
+      background: var(--color-bg);
+      color: var(--color-text-secondary);
+      cursor: pointer; transition: all 0.15s;
+      font-family: var(--font-sans);
+    }
+    .copy-btn:hover { background: var(--color-bg-secondary); }
+
+    .tag {
+      font-size: 11px; padding: 2px 8px; border-radius: 20px;
+      background: var(--color-bg-secondary); color: var(--color-text-secondary);
+      border: 0.5px solid var(--color-border);
+    }
+
+    .flex-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .flex-between { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+    .divider { border: none; border-top: 0.5px solid var(--color-border); margin: 16px 0; }
+    .hidden { display: none !important; }
+    .muted { color: var(--color-text-tertiary); font-style: italic; }
+
+    .script-box {
+      font-size: 13px; line-height: 1.8;
+      background: var(--color-bg-secondary);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      color: var(--color-text-secondary);
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="app-header">
+    <div class="app-logo"><div class="logo-dot"></div>Debrief</div>
+  </div>
+
+  <!-- SETUP VIEW -->
+  <div id="view-setup">
+    <div class="flex-between" style="margin-bottom:1rem;">
+      <div>
+        <div style="font-size:18px;font-weight:500;margin-bottom:4px;">New debrief session</div>
+        <div style="font-size:13px;color:var(--color-text-secondary);">Set up before the panel joins</div>
+      </div>
+      <span class="stage-pill">Setup</span>
+    </div>
+
+    <div class="card">
+      <div class="section-label">Candidate reference</div>
+      <div class="flex-row" style="margin-bottom:12px;">
+        <div style="flex:1;min-width:100px;">
+          <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:4px;">Initials only</div>
+          <input type="text" id="cand-initials" placeholder="e.g. DD" maxlength="4" />
+        </div>
+        <div style="flex:1.5;min-width:140px;">
+          <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:4px;">Date</div>
+          <input type="date" id="cand-date" />
+        </div>
+        <div style="flex:2;min-width:160px;">
+          <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:4px;">Role</div>
+          <input type="text" id="cand-role" placeholder="e.g. Senior Engineer" />
+        </div>
+      </div>
+
+      <hr class="divider" />
+      <div class="section-label">Interview panel</div>
+      <div id="interviewers-list"></div>
+      <div class="flex-row" style="margin-top:8px;">
+        <input type="text" id="new-name" placeholder="Interviewer name" style="flex:1;" />
+        <input type="text" id="new-focus" placeholder="Focus area (e.g. Technical)" style="flex:1.5;" />
+        <button class="btn" onclick="addInterviewer()">+ Add</button>
+      </div>
+
+      <hr class="divider" />
+      <div class="section-label">Evaluation factors</div>
+      <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:6px;">Remind the panel what they are assessing</div>
+      <textarea id="factors" placeholder="e.g. Technical depth, leadership potential, communication, culture fit..."></textarea>
+    </div>
+
+    <div style="text-align:right;">
+      <button class="btn btn-primary" onclick="startDebrief()">Start debrief →</button>
+    </div>
+  </div>
+
+  <!-- DEBRIEF VIEW -->
+  <div id="view-debrief" class="hidden">
+    <div class="flex-between" style="margin-bottom:8px;">
+      <div>
+        <div style="font-size:18px;font-weight:500;" id="session-title">Debrief</div>
+        <div style="font-size:13px;color:var(--color-text-secondary);" id="session-role"></div>
+      </div>
+      <span class="stage-pill active" id="stage-label">Stage 1 of 4</span>
+    </div>
+
+    <div class="progress-bar">
+      <div class="progress-seg active" id="seg0"></div>
+      <div class="progress-seg" id="seg1"></div>
+      <div class="progress-seg" id="seg2"></div>
+      <div class="progress-seg" id="seg3"></div>
+    </div>
+
+    <!-- STAGE 1 -->
+    <div id="stage-set-stage" class="card">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <div style="font-size:15px;font-weight:500;">Set the stage</div>
+          <div style="font-size:12px;color:var(--color-text-secondary);">~2 min — frame the session for the panel</div>
+        </div>
+      </div>
+      <div class="script-box">
+        "We're here to align on whether to proceed to an offer. Everyone has submitted feedback in Greenhouse — this session is to share perspectives, surface any flags, and reach a shared decision.<br><br>
+        We'll do a quick round first, then vote simultaneously. The goal is to be out in 15–20 minutes."
+      </div>
+      <div id="factors-display" style="margin-top:12px;"></div>
+      <div style="margin-top:1rem;text-align:right;">
+        <button class="btn btn-primary" onclick="goToStage(1)">Begin round →</button>
+      </div>
+    </div>
+
+    <!-- STAGE 2 -->
+    <div id="stage-round" class="card hidden">
+      <div class="step-header">
+        <div class="step-num">2</div>
+        <div>
+          <div style="font-size:15px;font-weight:500;">Quick round</div>
+          <div style="font-size:12px;color:var(--color-text-secondary);">20–40 sec per person — brief view + any flags</div>
+        </div>
+      </div>
+      <div id="round-list"></div>
+      <hr class="divider" />
+      <div style="font-size:13px;color:var(--color-text-secondary);margin-bottom:8px;">Flags raised during the round</div>
+      <div id="flag-chips" class="flex-row" style="margin-bottom:10px;flex-wrap:wrap;gap:6px;"></div>
+      <div class="flex-row">
+        <input type="text" id="new-flag" placeholder="Add a flag..." style="flex:1;" onkeydown="if(event.key==='Enter')addFlag()" />
+        <button class="btn" onclick="addFlag()">Add flag</button>
+      </div>
+      <div id="group-discussion" class="hidden" style="margin-top:12px;padding:1rem;background:var(--color-bg-secondary);border-radius:var(--radius-md);font-size:13px;color:var(--color-text-secondary);line-height:1.7;">
+        Flags noted — take 3–5 minutes for open discussion before the vote.
+      </div>
+      <div style="margin-top:1rem;text-align:right;">
+        <button class="btn btn-primary" onclick="goToStage(2)">Proceed to vote →</button>
+      </div>
+    </div>
+
+    <!-- STAGE 3 -->
+    <div id="stage-vote" class="card hidden">
+      <div class="step-header">
+        <div class="step-num">3</div>
+        <div>
+          <div style="font-size:15px;font-weight:500;">Simultaneous vote</div>
+          <div style="font-size:12px;color:var(--color-text-secondary);">Everyone selects before the reveal — no anchoring</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--color-text-tertiary);margin-bottom:12px;">1 = strong no &nbsp;·&nbsp; 2 = lean no &nbsp;·&nbsp; 3 = lean yes &nbsp;·&nbsp; 4 = strong yes</div>
+      <div id="vote-list"></div>
+      <hr class="divider" />
+      <div style="text-align:center;margin-bottom:1rem;">
+        <div id="countdown-display" class="hidden">
+          <div class="countdown-ring" id="countdown-num">3</div>
+          <div style="font-size:13px;color:var(--color-text-secondary);">Counting down...</div>
+        </div>
+        <div id="vote-actions">
+          <button class="btn btn-primary" onclick="startCountdown()">Reveal all votes →</button>
+          <div style="font-size:12px;color:var(--color-text-tertiary);margin-top:6px;">All votes hidden until reveal</div>
+        </div>
+      </div>
+      <div id="vote-result" class="hidden" style="text-align:center;margin-bottom:1rem;">
+        <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:6px;">Average score</div>
+        <div class="avg-badge" id="avg-score">—</div>
+        <div style="font-size:12px;color:var(--color-text-tertiary);margin-top:6px;" id="vote-spread"></div>
+      </div>
+      <div id="vote-discussion" class="hidden" style="background:var(--color-bg-secondary);border-radius:var(--radius-md);padding:1rem;font-size:13px;color:var(--color-text-secondary);line-height:1.7;margin-bottom:1rem;">
+        Discuss the range: why did scores differ? What concerns or strengths drove them?
+      </div>
+      <div id="to-decision-btn" class="hidden" style="text-align:right;">
+        <button class="btn btn-primary" onclick="goToStage(3)">Record decision →</button>
+      </div>
+    </div>
+
+    <!-- STAGE 4 -->
+    <div id="stage-decision" class="card hidden">
+      <div class="step-header">
+        <div class="step-num">4</div>
+        <div>
+          <div style="font-size:15px;font-weight:500;">Decision & offer note</div>
+          <div style="font-size:12px;color:var(--color-text-secondary);">Record the outcome and generate a Greenhouse note</div>
+        </div>
+      </div>
+      <div class="section-label">Decision</div>
+      <div class="flex-row" style="margin-bottom:1rem;gap:8px;flex-wrap:wrap;">
+        <button class="btn" id="dec-proceed" onclick="setDecision('proceed')">Proceed to offer</button>
+        <button class="btn" id="dec-no" onclick="setDecision('no')">Do not proceed</button>
+        <button class="btn" id="dec-hold" onclick="setDecision('hold')">Hold — more info needed</button>
+      </div>
+      <div class="section-label">Key themes from discussion</div>
+      <textarea id="themes-input" placeholder="Summarise the main strengths, risks, and flags raised during the debrief..." style="margin-bottom:1rem;"></textarea>
+      <div class="flex-between" style="margin-bottom:8px;">
+        <div class="section-label" style="margin:0;">Greenhouse offer approval note</div>
+        <button class="copy-btn hidden" id="copy-note-btn" onclick="copyNote()">Copy note</button>
+      </div>
+      <div id="note-output" class="note-box muted">Fill in the decision and key themes, then generate your note.</div>
+      <div style="margin-top:1rem;display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="generateNote()">Generate AI note →</button>
+        <button class="btn" onclick="resetApp()">New debrief</button>
+      </div>
+      <div id="note-loading" class="hidden" style="margin-top:8px;font-size:12px;color:var(--color-text-tertiary);">Drafting note...</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let interviewers = [], flags = [], votes = {}, decision = null, sessionData = {}, revealed = false;
+
+  function addInterviewer() {
+    const name = document.getElementById('new-name').value.trim();
+    const focus = document.getElementById('new-focus').value.trim();
+    if (!name) return;
+    interviewers.push({ name, focus, id: Date.now() });
+    document.getElementById('new-name').value = '';
+    document.getElementById('new-focus').value = '';
+    renderInterviewersList();
+  }
+
+  function removeInterviewer(id) {
+    interviewers = interviewers.filter(i => i.id !== id);
+    renderInterviewersList();
+  }
+
+  function initials(name) {
+    return name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+  }
+
+  function renderInterviewersList() {
+    document.getElementById('interviewers-list').innerHTML = interviewers.map(i => `
+      <div class="interviewer-row">
+        <div class="avatar">${initials(i.name)}</div>
+        <div style="flex:1;font-size:14px;">${i.name}</div>
+        <span class="tag">${i.focus || 'General'}</span>
+        <button class="btn" style="padding:4px 10px;font-size:12px;" onclick="removeInterviewer(${i.id})">Remove</button>
+      </div>`).join('');
+  }
+
+  function startDebrief() {
+    const ini = document.getElementById('cand-initials').value.trim() || '??';
+    const date = document.getElementById('cand-date').value;
+    const role = document.getElementById('cand-role').value.trim();
+    const factors = document.getElementById('factors').value.trim();
+    if (!interviewers.length) { alert('Add at least one interviewer.'); return; }
+    sessionData = { initials: ini, date, role, factors };
+    const dateStr = date ? new Date(date + 'T00:00:00').toLocaleDateString('en-GB', { day:'numeric', month:'long' }) : '';
+    document.getElementById('session-title').textContent = ini + (dateStr ? ' · ' + dateStr : '');
+    document.getElementById('session-role').textContent = role;
+    if (factors) {
+      document.getElementById('factors-display').innerHTML = `<div style="font-size:12px;color:var(--color-text-tertiary);margin-bottom:4px;">Evaluation factors</div><div style="font-size:13px;color:var(--color-text-secondary);line-height:1.7;">${factors}</div>`;
+    }
+    document.getElementById('view-setup').classList.add('hidden');
+    document.getElementById('view-debrief').classList.remove('hidden');
+    renderRoundList();
+    renderVoteList();
+  }
+
+  function renderRoundList() {
+    document.getElementById('round-list').innerHTML = interviewers.map(i => `
+      <div class="interviewer-row" style="padding:8px 0;border-bottom:0.5px solid var(--color-border);">
+        <div class="avatar">${initials(i.name)}</div>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:500;">${i.name}</div>
+          <div style="font-size:12px;color:var(--color-text-tertiary);">${i.focus || 'General'}</div>
+        </div>
+        <span id="spoke-${i.id}" class="tag" style="cursor:pointer;" onclick="toggleSpoke(${i.id})">Pending</span>
+      </div>`).join('');
+  }
+
+  function toggleSpoke(id) {
+    const el = document.getElementById('spoke-' + id);
+    const done = el.textContent === 'Done';
+    el.textContent = done ? 'Pending' : 'Done';
+    el.style.background = done ? '' : 'var(--color-green-light)';
+    el.style.color = done ? '' : 'var(--color-green-text)';
+    el.style.borderColor = done ? '' : 'var(--color-green-mid)';
+  }
+
+  function addFlag() {
+    const val = document.getElementById('new-flag').value.trim();
+    if (!val) return;
+    flags.push(val);
+    document.getElementById('new-flag').value = '';
+    renderFlags();
+    document.getElementById('group-discussion').classList.remove('hidden');
+  }
+
+  function renderFlags() {
+    document.getElementById('flag-chips').innerHTML = flags.map((f,i) => `
+      <span class="flag-chip" onclick="removeFlag(${i})">⚑ ${f} ×</span>`).join('');
+    if (!flags.length) document.getElementById('group-discussion').classList.add('hidden');
+  }
+
+  function removeFlag(i) { flags.splice(i,1); renderFlags(); }
+
+  function renderVoteList() {
+    document.getElementById('vote-list').innerHTML = interviewers.map(i => `
+      <div class="interviewer-row" style="padding:6px 0;border-bottom:0.5px solid var(--color-border);">
+        <div class="avatar">${initials(i.name)}</div>
+        <div style="flex:1;font-size:13px;">${i.name}</div>
+        <div style="display:flex;gap:6px;" id="vbtn-${i.id}">
+          ${[1,2,3,4].map(v => `<button class="vote-btn" id="v${i.id}_${v}" onclick="castVote(${i.id},${v})">${v}</button>`).join('')}
+        </div>
+        <div id="vshow-${i.id}" class="vote-display pending" style="display:none;">?</div>
+      </div>`).join('');
+  }
+
+  function castVote(id, val) {
+    votes[id] = val;
+    [1,2,3,4].forEach(v => document.getElementById('v'+id+'_'+v)?.classList.toggle('selected', v===val));
+  }
+
+  function startCountdown() {
+    document.getElementById('vote-actions').classList.add('hidden');
+    document.getElementById('countdown-display').classList.remove('hidden');
+    let n = 3;
+    const el = document.getElementById('countdown-num');
+    const tick = setInterval(() => {
+      n--;
+      if (n <= 0) { clearInterval(tick); document.getElementById('countdown-display').classList.add('hidden'); revealVotes(); }
+      else el.textContent = n;
+    }, 800);
+  }
+
+  function revealVotes() {
+    revealed = true;
+    interviewers.forEach(i => {
+      document.getElementById('vbtn-'+i.id).style.display = 'none';
+      const show = document.getElementById('vshow-'+i.id);
+      show.style.display = 'flex';
+      show.textContent = votes[i.id] !== undefined ? votes[i.id] : '—';
+      show.classList.remove('pending'); show.classList.add('revealed');
+    });
+    const vals = interviewers.map(i => votes[i.id]).filter(v => v !== undefined);
+    if (vals.length) {
+      const avg = (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1);
+      document.getElementById('avg-score').textContent = avg;
+      const spread = vals.length > 1 ? ` (range: ${Math.min(...vals)}–${Math.max(...vals)})` : '';
+      document.getElementById('vote-spread').textContent = `${vals.length} voter${vals.length>1?'s':''} ${spread}`;
+    }
+    document.getElementById('vote-result').classList.remove('hidden');
+    document.getElementById('vote-discussion').classList.remove('hidden');
+    document.getElementById('to-decision-btn').classList.remove('hidden');
+  }
+
+  function setDecision(d) {
+    decision = d;
+    ['proceed','no','hold'].forEach(opt => {
+      const el = document.getElementById('dec-'+opt);
+      el.classList.remove('btn-primary');
+    });
+    document.getElementById('dec-'+d).classList.add('btn-primary');
+  }
+
+  function goToStage(n) {
+    ['stage-set-stage','stage-round','stage-vote','stage-decision'].forEach((s,i) =>
+      document.getElementById(s).classList.toggle('hidden', i!==n));
+    document.querySelectorAll('.progress-seg').forEach((s,i) => {
+      s.classList.remove('done','active');
+      if (i < n) s.classList.add('done');
+      else if (i === n) s.classList.add('active');
+    });
+    document.getElementById('stage-label').textContent = `Stage ${n+1} of 4`;
+  }
+
+  async function generateNote() {
+    if (!decision) { alert('Please record a decision first.'); return; }
+    const themes = document.getElementById('themes-input').value.trim();
+    const vals = interviewers.map(i => votes[i.id]).filter(v => v !== undefined);
+    const avg = vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1) : 'N/A';
+    const decisionLabel = { proceed:'Proceed to offer', no:'Do not proceed', hold:'Hold — more information needed' }[decision];
+    const panelSummary = interviewers.map(i => `${i.name} (${i.focus||'General'}): ${votes[i.id]!==undefined ? votes[i.id]+'/4' : 'no vote'}`).join(', ');
+    const flagList = flags.length ? flags.join(', ') : 'None raised';
+
+    const noteEl = document.getElementById('note-output');
+    noteEl.classList.remove('muted');
+    noteEl.textContent = 'Generating...';
+    document.getElementById('note-loading').classList.remove('hidden');
+
+    const prompt = `You are helping a recruiter write a short offer approval note to paste into Greenhouse after an interview debrief.
+
+Write a single short narrative paragraph (4–6 sentences) in a professional but human tone. Do not use bullet points or headers.
+
+Session details:
+- Candidate reference: ${sessionData.initials}
+- Role: ${sessionData.role || 'not specified'}
+- Decision: ${decisionLabel}
+- Panel average score: ${avg}/4 (1=strong no, 2=lean no, 3=lean yes, 4=strong yes)
+- Panel breakdown: ${panelSummary}
+- Flags raised: ${flagList}
+- Key themes: ${themes || 'not provided'}
+
+Write the Greenhouse note now. Start directly with the content, no preamble.`;
+
+    try {
+      const res = await fetch('/api/claude', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+      const data = await res.json();
+      const text = data.content?.find(b => b.type==='text')?.text || 'Could not generate note.';
+      noteEl.textContent = text;
+      document.getElementById('copy-note-btn').classList.remove('hidden');
+    } catch(e) {
+      noteEl.textContent = 'Error generating note. Please try again.';
+    }
+    document.getElementById('note-loading').classList.add('hidden');
+  }
+
+  function copyNote() {
+    const text = document.getElementById('note-output').textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById('copy-note-btn');
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy note', 2000);
+    });
+  }
+
+  function resetApp() {
+    interviewers=[]; flags=[]; votes={}; decision=null; sessionData={}; revealed=false;
+    document.getElementById('view-setup').classList.remove('hidden');
+    document.getElementById('view-debrief').classList.add('hidden');
+    document.getElementById('interviewers-list').innerHTML='';
+    ['cand-initials','cand-date','cand-role','factors'].forEach(id => document.getElementById(id).value='');
+    document.getElementById('cand-date').valueAsDate = new Date();
+  }
+
+  document.getElementById('cand-date').valueAsDate = new Date();
+</script>
+</body>
+</html>
