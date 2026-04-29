@@ -2,17 +2,15 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 export default async function handler(req, res) {
   const { method } = req;
 
-  // Cast or update a vote
   if (method === 'POST') {
     const { sessionId, interviewerName, vote } = req.body;
 
-    // Upsert — update if exists, insert if not
     const { error } = await supabase
       .from('votes')
       .upsert({
@@ -25,7 +23,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true });
   }
 
-  // Get all votes for a session
   if (method === 'GET') {
     const { sessionId } = req.query;
     const { data, error } = await supabase
