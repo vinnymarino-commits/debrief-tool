@@ -2,6 +2,7 @@
   "name": "debrief-tool",
   "version": "1.0.0",
   "description": "Interview debrief facilitation tool",
+  "type": "module",
   "scripts": {
     "dev": "vercel dev"
   },
