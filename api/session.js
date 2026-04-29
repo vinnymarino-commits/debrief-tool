@@ -2,13 +2,12 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 export default async function handler(req, res) {
   const { method } = req;
 
-  // Create a new session
   if (method === 'POST' && req.body.action === 'create') {
     const { candidateRef, role, factors, interviewers } = req.body;
     const sessionId = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -32,7 +31,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ sessionId });
   }
 
-  // Get session by ID
   if (method === 'GET') {
     const { sessionId } = req.query;
     const { data, error } = await supabase
@@ -45,7 +43,6 @@ export default async function handler(req, res) {
     return res.status(200).json(data);
   }
 
-  // Update session (stage, flags, revealed)
   if (method === 'PATCH') {
     const { sessionId, ...updates } = req.body;
     if (updates.flags) updates.flags = JSON.stringify(updates.flags);
